@@ -1,51 +1,58 @@
 package diff
 
-// Result holds the comparison result between two env files.
-type Result struct {
-	// MissingInRight contains keys present in left but absent in right.
-	MissingInRight []string
-	// MissingInLeft contains keys present in right but absent in left.
-	MissingInLeft []string
-	// Conflicts contains keys present in both files but with different values.
-	Conflicts []Conflict
-}
+// Kind describes the type of difference found between two env files.
+type Kind string
 
-// Conflict represents a key whose value differs between two env files.
-type Conflict struct {
+const (
+	// Missing indicates a key exists in one file but not the other.
+	Missing Kind = "missing"
+	// Conflict indicates a key exists in both files but with different values.
+	Conflict Kind = "conflict"
+)
+
+// Result represents a single difference between two env maps.
+type Result struct {
+	Kind       Kind
 	Key        string
 	LeftValue  string
 	RightValue string
+	// MissingIn holds the name/label of the file that is missing the key.
+	MissingIn string
 }
 
-// Compare takes two parsed env maps and returns a Result describing their differences.
-func Compare(left, right map[string]string) Result {
-	result := Result{}
+// Compare takes two env maps and optional file labels, returning all differences.
+// leftName and rightName are used to populate MissingIn on Missing results.
+func Compare(left, right map[string]string, leftName, rightName string) []Result {
+	var results []Result
 
-	for key, leftVal := range left {
-		rightVal, exists := right[key]
-		if !exists {
-			result.MissingInRight = append(result.MissingInRight, key)
-			continue
-		}
-		if leftVal != rightVal {
-			result.Conflicts = append(result.Conflicts, Conflict{
+	for key, lv := range left {
+		if rv, ok := right[key]; !ok {
+			results = append(results, Result{
+				Kind:      Missing,
+				Key:       key,
+				LeftValue: lv,
+				MissingIn: rightName,
+			})
+		} else if lv != rv {
+			results = append(results, Result{
+				Kind:       Conflict,
 				Key:        key,
-				LeftValue:  leftVal,
-				RightValue: rightVal,
+				LeftValue:  lv,
+				RightValue: rv,
 			})
 		}
 	}
 
-	for key := range right {
-		if _, exists := left[key]; !exists {
-			result.MissingInLeft = append(result.MissingInLeft, key)
+	for key, rv := range right {
+		if _, ok := left[key]; !ok {
+			results = append(results, Result{
+				Kind:       Missing,
+				Key:        key,
+				RightValue: rv,
+				MissingIn:  leftName,
+			})
 		}
 	}
 
-	return result
-}
-
-// HasDifferences returns true if the Result contains any differences.
-func (r Result) HasDifferences() bool {
-	return len(r.MissingInRight) > 0 || len(r.MissingInLeft) > 0 || len(r.Conflicts) > 0
+	return results
 }
