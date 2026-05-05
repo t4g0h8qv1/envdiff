@@ -1,56 +1,37 @@
 package diff
 
-// Kind describes the type of difference found between two env files.
-type Kind string
+// Type represents the kind of difference found between two env files.
+type Type int
 
 const (
-	// Missing indicates a key exists in one file but not the other.
-	Missing Kind = "missing"
-	// Conflict indicates a key exists in both files but with different values.
-	Conflict Kind = "conflict"
+	Missing  Type = iota // Key exists in one file but not the other
+	Conflict             // Key exists in both files but values differ
 )
 
 // Result represents a single difference between two env maps.
 type Result struct {
-	Kind       Kind
-	Key        string
-	LeftValue  string
-	RightValue string
-	// MissingIn holds the name/label of the file that is missing the key.
-	MissingIn string
+	Key   string
+	Type  Type
+	Left  string // value from the left/first file (empty if missing)
+	Right string // value from the right/second file (empty if missing)
 }
 
-// Compare takes two env maps and optional file labels, returning all differences.
-// leftName and rightName are used to populate MissingIn on Missing results.
-func Compare(left, right map[string]string, leftName, rightName string) []Result {
+// Compare takes two env maps and returns a slice of differences.
+func Compare(left, right map[string]string) []Result {
 	var results []Result
 
-	for key, lv := range left {
-		if rv, ok := right[key]; !ok {
-			results = append(results, Result{
-				Kind:      Missing,
-				Key:       key,
-				LeftValue: lv,
-				MissingIn: rightName,
-			})
+	for k, lv := range left {
+		rv, ok := right[k]
+		if !ok {
+			results = append(results, Result{Key: k, Type: Missing, Left: lv, Right: ""})
 		} else if lv != rv {
-			results = append(results, Result{
-				Kind:       Conflict,
-				Key:        key,
-				LeftValue:  lv,
-				RightValue: rv,
-			})
+			results = append(results, Result{Key: k, Type: Conflict, Left: lv, Right: rv})
 		}
 	}
 
-	for key, rv := range right {
-		if _, ok := left[key]; !ok {
-			results = append(results, Result{
-				Kind:       Missing,
-				Key:        key,
-				RightValue: rv,
-				MissingIn:  leftName,
-			})
+	for k, rv := range right {
+		if _, ok := left[k]; !ok {
+			results = append(results, Result{Key: k, Type: Missing, Left: "", Right: rv})
 		}
 	}
 

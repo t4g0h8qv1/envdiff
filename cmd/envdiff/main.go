@@ -6,49 +6,47 @@ import (
 	"os"
 
 	"github.com/user/envdiff/internal/diff"
+	"github.com/user/envdiff/internal/filter"
 	"github.com/user/envdiff/internal/loader"
 	"github.com/user/envdiff/internal/report"
 )
 
 func main() {
 	format := flag.String("format", "text", "Output format: text or json")
-	dir := flag.String("dir", "", "Directory to scan for .env files")
+	onlyMissing := flag.Bool("missing", false, "Show only missing keys")
+	onlyConflicts := flag.Bool("conflicts", false, "Show only conflicting keys")
+	keyPrefix := flag.String("prefix", "", "Filter keys by prefix")
+	keyContains := flag.String("contains", "", "Filter keys containing substring")
 	flag.Parse()
 
-	var files []loader.EnvFile
-	var err error
-
-	args := flag.Args()
-	if *dir != "" {
-		files, err = loader.LoadDir(*dir)
-	} else if len(args) >= 2 {
-		files, err = loader.LoadFiles(args)
-	} else {
-		fmt.Fprintln(os.Stderr, "Usage: envdiff [--format text|json] [--dir <dir>] <file1> <file2> [...]")
+	paths := flag.Args()
+	if len(paths) < 2 {
+		fmt.Fprintln(os.Stderr, "Usage: envdiff [flags] <file1> <file2>")
+		flag.PrintDefaults()
 		os.Exit(1)
 	}
 
+	envMaps, err := loader.LoadFiles(paths)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error loading files: %v\n", err)
 		os.Exit(1)
 	}
 
-	if len(files) < 2 {
-		fmt.Fprintln(os.Stderr, "At least two .env files are required for comparison")
+	results := diff.Compare(envMaps[0], envMaps[1])
+
+	filterOpts := filter.Options{
+		OnlyMissing:   *onlyMissing,
+		OnlyConflicts: *onlyConflicts,
+		KeyPrefix:     *keyPrefix,
+		KeyContains:   *keyContains,
+	}
+	results = filter.Apply(results, filterOpts)
+
+	output, err := report.Render(results, *format)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error rendering report: %v\n", err)
 		os.Exit(1)
 	}
 
-	for i := 0; i < len(files)-1; i++ {
-		left := files[i]
-		right := files[i+1]
-
-		results := diff.Compare(left.Entries, right.Entries)
-
-		output, err := report.Render(results, left.Name, right.Name, *format)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error rendering report: %v\n", err)
-			os.Exit(1)
-		}
-		fmt.Println(output)
-	}
+	fmt.Println(output)
 }
