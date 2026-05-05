@@ -1,37 +1,50 @@
 package diff
 
-// Type represents the kind of difference found between two env files.
-type Type int
+// Status represents the type of difference found for a key.
+type Status string
 
 const (
-	Missing  Type = iota // Key exists in one file but not the other
-	Conflict             // Key exists in both files but values differ
+	StatusMissing  Status = "missing"
+	StatusConflict Status = "conflict"
 )
 
-// Result represents a single difference between two env maps.
+// Result holds a single key comparison result between two env maps.
 type Result struct {
-	Key   string
-	Type  Type
-	Left  string // value from the left/first file (empty if missing)
-	Right string // value from the right/second file (empty if missing)
+	Key        string `json:"key"`
+	Status     Status `json:"status"`
+	LeftValue  string `json:"left_value"`
+	RightValue string `json:"right_value"`
 }
 
-// Compare takes two env maps and returns a slice of differences.
+// Compare takes two env maps and returns a slice of Results describing
+// keys that are missing in one side or have conflicting values.
 func Compare(left, right map[string]string) []Result {
 	var results []Result
 
 	for k, lv := range left {
-		rv, ok := right[k]
-		if !ok {
-			results = append(results, Result{Key: k, Type: Missing, Left: lv, Right: ""})
+		if rv, ok := right[k]; !ok {
+			results = append(results, Result{
+				Key:       k,
+				Status:    StatusMissing,
+				LeftValue: lv,
+			})
 		} else if lv != rv {
-			results = append(results, Result{Key: k, Type: Conflict, Left: lv, Right: rv})
+			results = append(results, Result{
+				Key:        k,
+				Status:     StatusConflict,
+				LeftValue:  lv,
+				RightValue: rv,
+			})
 		}
 	}
 
 	for k, rv := range right {
 		if _, ok := left[k]; !ok {
-			results = append(results, Result{Key: k, Type: Missing, Left: "", Right: rv})
+			results = append(results, Result{
+				Key:        k,
+				Status:     StatusMissing,
+				RightValue: rv,
+			})
 		}
 	}
 
