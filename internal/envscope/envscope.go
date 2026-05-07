@@ -86,3 +86,15 @@ func (r *Resolver) FindConflicts() []Conflict {
 	}
 	return conflicts
 }
+
+// ScopesForKey returns the names of all scopes that define the given key,
+// in priority order (highest priority first).
+func (r *Resolver) ScopesForKey(key string) []string {
+	var names []string
+	for _, s := range r.scopes {
+		if _, ok := s.Vars[key]; ok {
+			names = append(names, s.Name)
+		}
+	}
+	return names
+}
