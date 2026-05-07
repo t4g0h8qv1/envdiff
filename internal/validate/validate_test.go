@@ -83,3 +83,19 @@ func TestCheck_OptionalKeySkippedWhenAbsent(t *testing.T) {
 		t.Errorf("expected no violations for absent optional key, got %d", len(violations))
 	}
 }
+
+func TestCheck_ViolationContainsFileName(t *testing.T) {
+	envMaps := makeEnvMaps(map[string]map[string]string{
+		".env.production": {"APP_ENV": "production"},
+	})
+	rules := []Rule{
+		{Key: "PORT", Required: true},
+	}
+	violations := Check(envMaps, rules)
+	if len(violations) != 1 {
+		t.Fatalf("expected 1 violation, got %d", len(violations))
+	}
+	if violations[0].File != ".env.production" {
+		t.Errorf("expected violation file to be '.env.production', got %q", violations[0].File)
+	}
+}
