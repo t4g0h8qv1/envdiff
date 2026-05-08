@@ -37,6 +37,16 @@ if len(newOrChanged) > 0 {
 }
 ```
 
+### Diff two snapshots
+
+```go
+old, _ := snapshot.Load("./snapshots/week-ago.json")
+new, _ := snapshot.Load("./snapshots/today.json")
+
+added, removed := snapshot.Diff(old, new)
+fmt.Printf("%d issues resolved, %d new issues introduced\n", len(removed), len(added))
+```
+
 ## Snapshot file format
 
 Snapshots are stored as JSON:
