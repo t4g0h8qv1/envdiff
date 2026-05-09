@@ -99,3 +99,24 @@ func TestCheck_ViolationContainsFileName(t *testing.T) {
 		t.Errorf("expected violation file to be '.env.production', got %q", violations[0].File)
 	}
 }
+
+func TestCheck_EmptyEnvMaps(t *testing.T) {
+	envMaps := makeEnvMaps(map[string]map[string]string{})
+	rules := []Rule{
+		{Key: "PORT", Required: true},
+	}
+	violations := Check(envMaps, rules)
+	if len(violations) != 0 {
+		t.Errorf("expected no violations for empty env maps, got %d", len(violations))
+	}
+}
+
+func TestCheck_EmptyRules(t *testing.T) {
+	envMaps := makeEnvMaps(map[string]map[string]string{
+		".env.production": {"PORT": "8080"},
+	})
+	violations := Check(envMaps, []Rule{})
+	if len(violations) != 0 {
+		t.Errorf("expected no violations for empty rules, got %d", len(violations))
+	}
+}
