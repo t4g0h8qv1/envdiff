@@ -98,3 +98,15 @@ func (r *Resolver) ScopesForKey(key string) []string {
 	}
 	return names
 }
+
+// MissingIn returns the names of scopes (in priority order) that do not define
+// the given key. This is useful for auditing which environments lack a variable.
+func (r *Resolver) MissingIn(key string) []string {
+	var names []string
+	for _, s := range r.scopes {
+		if _, ok := s.Vars[key]; !ok {
+			names = append(names, s.Name)
+		}
+	}
+	return names
+}
