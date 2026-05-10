@@ -56,6 +56,14 @@ func TestResolve_KeyNotFound(t *testing.T) {
 	}
 }
 
+func TestResolve_EmptyScopes(t *testing.T) {
+	r := envscope.New()
+	_, _, err := r.Resolve("ANY_KEY")
+	if err == nil {
+		t.Fatal("expected error when no scopes are defined")
+	}
+}
+
 func TestResolveAll_MergesScopes(t *testing.T) {
 	r := envscope.New(
 		makeScope("prod", "HOST", "prod-host", "PORT", "443"),
